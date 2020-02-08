@@ -1,0 +1,59 @@
+{
+  "variables": {
+    "aws_access_key": "",
+    "aws_secret_key": ""
+  },
+  "builders": [{
+    "type": "amazon-ebs",
+    "access_key": "{{user `aws_access_key`}}",
+    "secret_key": "{{user `aws_secret_key`}}",
+    "region": "us-west-2",
+    "source_ami_filter": {
+      "filters": {
+        "virtualization-type": "hvm",
+        "name": "ubuntu/images/*ubuntu-bionic-18.04-amd64-server-*",
+        "root-device-type": "ebs"
+      },
+      "owners": ["099720109477"],
+      "most_recent": true
+    },
+    "launch_block_device_mappings": [
+    {
+      "device_name": "/dev/sda1",
+      "volume_size": 24,
+      "volume_type": "gp2",
+      "delete_on_termination": true
+    }
+    ],
+    "ami_regions": [
+      "us-west-2"
+    ],
+    "instance_type": "t2.medium",
+    "ssh_username": "ubuntu",
+    "ami_name": "ubuntu1804-docker1903-prepulled {{timestamp}}"
+  }],
+  "provisioners": [
+   {
+    "type": "shell",
+    "inline": [
+      "sleep 30",
+      "export DEBIAN_FRONTEND=noninteractive",
+      "sudo apt-get -y upgrade",
+      "curl -kv https://releases.rancher.com/install-docker/19.03.sh | sh",
+      "sudo systemctl enable docker",
+      "sudo usermod -aG docker ubuntu",
+      "sudo reboot"
+    ],
+    "expect_disconnect": true
+  },
+  {
+   "type": "shell",
+   "inline": [
+     "wget https://github.com/rancher/rancher/releases/download/v2.3.5/rancher-images.txt",
+     "for i in $(cat rancher-images.txt); do docker pull $i; done",
+     "rm rancher-images.txt"
+   ],
+   "pause_before": "10s"
+  }
+  ]
+}
